@@ -16,13 +16,23 @@ For help installing this package for use with Mathematica, please contact Noah.
 ## Usage #######################################################################
 
 This toolbox consists of the following functions, each of which is also
-documented in Mathematica (i.e., one may evaluate ?LaunchJob in Mathematica to
-see its documentation).
+documented in Mathematica (i.e., one may evaluate ?HPCConnect or ?HPCSubmit in
+Mathematica to see its documentation).
+
+  * HPCConnect\[username\] yields a connection object to the HPC
+  * HPCStatus\[connection\] yields a status indication for the connection
+  * HPCJobList\[connection\] yields a list of the job names; note that this only
+    yields jobs that have been submitted using HPCSubmit
+  * HPCSubmit\[connection, name, workerCount, function\] submits an array job
+    with the given name consisting of workerCount workers, each of which runs
+    the given function with a single argument (the worker ID, which is in the
+    range 1 to workerCount, inclusive). 
 
 
 ## License #####################################################################
 
-Copyright (c) 2015 Noah C. Benson \\
+Copyright (c) 2015 Noah C. Benson
+
 This README file is part of the nyu-hpc-mathematica project.
 
 The nyu-hpc-mathematica project is free software: you can redistribute it and/or
