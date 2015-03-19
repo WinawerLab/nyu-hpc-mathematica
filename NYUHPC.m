@@ -72,18 +72,51 @@ HPCPrep[hpc_HPCConnection] := Check[
      tag = ToString @ Unique["DONE"]},
     WriteString[
       proc,
-      (Print[#];#)&@StringJoin[
-        "{ [ -d ~/.Mathematica/Applications ] || mkdir -p ~/.Mathematica/Applications &> /dev/null || ( echo fail_mkdir_1 && exit 1 );",
-        "  cd ~/.Mathematica;",
-        "  [ -d nyu-hpc-mathematica ] || git clone https://github.com/WinawerLab/nyu-hpc-mathematica &> /dev/null || ( echo fail_git && exit 1 );",
-        "  [ -x nyu-hpc-mathematica/scripts/run_math_worker.sh ] || chmod 755 nyu-hpc-mathematica/scripts/run_math_worker.sh &> /dev/null || ( echo fail_chmod && exit 1 );",
-        "  [ -a ~/.Mathematica/Applications/NYUHPCWorker.m ] || ln -s ~/.Mathematica/nyu-hpc-mathematica/NYUHPCWorker.m ~/.Mathematica/Applications/NYUHPCWorker.m &> /dev/null || ( echo fail_ln && exit 1 );",
-        "  cd ~;",
-        "  [ -d ~/.nyu_hpc_math_jobs ] || mkdir -p ~/.nyu_hpc_math_jobs &> /dev/null || ( echo fail_mkdir_2 && exit 1 );",
-        "  echo SUCCESS;",
-        "  }; ",
-        "echo " <> tag <> "\n"]];
-    ReadString[proc, tag]],
+      (* The goal of this small bit of bash code is to do the following: *)
+      StringJoin[
+        "{ ",
+        Riffle[
+          {Riffle[
+             {"[ -d ~/.Mathematica/Applications ]",
+              "mkdir -p ~/.Mathematica/Applications &> /dev/null",
+              "( echo fail_mkdir_1 && exit 1 )"},
+             " || "],
+           "cd ~/.Mathematica",
+           Riffle[
+             {"[ -d nyu-hpc-mathematica ]",
+              "git clone https://github.com/WinawerLab/nyu-hpc-mathematica &> /dev/null",
+              "( echo fail_git_clone && exit 1 )"},
+             " || "],
+           Riffle[
+             {{"( ", Riffle[{"cd nyu-hpc-mathematica",
+                             "git fetch --all &>/dev/null",
+                             "git reset --hard origin/master &>/dev/null",
+                             "cd .."},
+                            " && "], " )"},
+              "( echo fail_git_pull && exit 1 )"},
+             " || "],
+           Riffle[
+             {"[ -x nyu-hpc-mathematica/scripts/run_math_worker.sh ]",
+              "chmod 755 nyu-hpc-mathematica/scripts/run_math_worker.sh &> /dev/null",
+              "( echo fail_chmod && exit 1 )"},
+             " || "],
+           Riffle[
+             {"[ -a ~/.Mathematica/Applications/NYUHPCWorker.m ]",
+              "ln -s ~/.Mathematica/nyu-hpc-mathematica/NYUHPCWorker.m"
+               <> "  ~/.Mathematica/Applications/NYUHPCWorker.m &> /dev/null",
+              "( echo fail_ln && exit 1 )"},
+             " || "],
+           "cd ~",
+           Riffle[
+             {"[ -d ~/.nyu_hpc_math_jobs ]",
+              "mkdir -p ~/.nyu_hpc_math_jobs &> /dev/null",
+              "( echo fail_mkdir_2 && exit 1 )"},
+             " || "],
+           "echo SUCCESS;"},
+          "; "],
+        " }; ",
+        "echo ", tag, ";\n"]];
+    StringTrim @ ReadString[proc, tag]],
   "FAIL"];
 Protect[HPCPrep];    
 
