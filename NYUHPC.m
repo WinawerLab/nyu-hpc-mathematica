@@ -305,7 +305,8 @@ Options[HPCSubmit] = {
   "Overwrite" -> False,
   "Walltime" -> "3:00:00",
   "MaxSimultaneousWorkers" -> 50,
-  "Directory" :> FileNameJoin[{Environment["HOME"], "math"}]};
+  "Directory" :> FileNameJoin[{Environment["HOME"], "math"}],
+  "Dependencies" -> None};
 HPCSubmit[name_String, n_, code_, opts___] := If[$HPCCurrentConnection === None,
   Message[HPCConnection::noconn],
   HPCSubmit[$HPCCurrentConnection, name, n, code, opts]];
@@ -318,10 +319,14 @@ HPCSubmit[hpc_HPCCommection, name_String, n_, code_, OptionsPattern[]] := Catch[
      maxSim = OptionValue["MaxSimultaneousWorkers"],
      baseDir = OptionValue["Directory"],
      proc = ProcessObject[hpc],
-     walltime = OptionValue["Walltime"]},
+     walltime = OptionValue["Walltime"],
+     deps = OptionValue["Dependencies"] /. None -> {}},
     Check[
       Which[
         HPCStatus[hpc] != "OKAY", Message[HPCStatus::badstatus, HPCStatus[hpc], "HPCSubmit"],
+        !MatchQ[deps, {_String...}], Message[
+          HPCStatus::badarg,
+          "Dependencies must be a list of strings"],
         !overwrite && MemberQ[HPCJobList[hpc, All], name], Message[
           HPCSubmit::badarg,
           "\"Overwrite\" is False, but a job named \""<>name<>"\" already exists"],
@@ -366,9 +371,13 @@ HPCSubmit[hpc_HPCCommection, name_String, n_, code_, OptionsPattern[]] := Catch[
         StringJoin[
           "\\cat << EOF_EOF_EOF > \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/init.m\" && echo OKAY\n",
           Block[
-            {NYUHPC`Private`RunWorker = code},
+            {NYUHPC`Private`RunWorker = code,
+             NYUHPC`Private`$Dependencies = deps},
             Check[
-              ToString[FullDefinition[code]],
+              StringJoin[
+                ToString[FullDefinition[NYUHPC`Private`RunWorker]],
+                "\n\n",
+                ToString[FullDefinition[NYUHPC`Private`$Dependencies]]],
               Throw[
                 Message[HPCSubmit::ioerr, "Could not get FullDefinition of function"],
                 $Failed]]],
