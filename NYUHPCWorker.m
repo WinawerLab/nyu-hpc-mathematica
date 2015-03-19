@@ -33,54 +33,66 @@ Begin["`Private`"];
 (* Define a function for handling job errors, messages, warnings *)
 JobError[msg___] := (
   Export[
-    "error.txt",
+    FileNameJoin[{$JobWorkingDirectory, "error-"<>IntegerString[$WorkerID, 10, 4]<>".txt"}],
     StringJoin[ToString /@ {msg}],
     "Text"];
   Quit[]);
 JobMessage[msg___] := PutAppend[
   StringJoin[ToString /@ {msg}],
-  "messages.txt"];
+  FileNameJoin[{$JobWorkingDirectory, "messages"<>IntegerString[$WorkerID, 10, 4]<>".txt"}]];
 JobSuccess[data_] := Block[
   {result = data},
   Save[
-    FileNameJoin[{$JobWorkingDirectory, "success.m"}],
+    FileNameJoin[{$JobWorkingDirectory, "success-"<>IntegerString[$WorkerID, 10, 4]<>".m"}],
     result];
   Quit[]];
 JobExport[name_String, data_, args___] := (
-  If[!DirectoryQ[FileNameJoin[{$JobWorkingDirectory, "export"}]],
+  If[!DirectoryQ[FileNameJoin[{$JobWorkingDirectory, "export-"<>IntegerString[$WorkerID, 10, 4]}]],
     CreateDirectory[
-      FileNameJoin[{$JobWorkingDirectory, "export"}],
+      FileNameJoin[{$JobWorkingDirectory, "export-"<>IntegerString[$WorkerID, 10, 4]}],
       CreateIntermediateDirectories -> True]];
-  Export[FileNameJoin[{$JobWorkingDirectory, "export", name}], data, args]);
+  Export[
+    FileNameJoin[{$JobWorkingDirectory, "export-"IntegerString[$WorkerID, 10, 4], name}],
+    data,
+    args]);
 JobWarning[msg___] := PutAppend[
   StringJoin[ToString /@ {msg}],
-  FileNameJoin[{$JobWorkingDirectory, "warnings.txt"}];
+  FileNameJoin[{$JobWorkingDirectory, "warnings-"<>IntegerString[$WorkerID, 10, 4]<>".txt"}];
 
 (* first, set our basic variables *)
-$JobName = Check[
-  With[
-    {job = Environment["HPC_JOB"]},
-    If[job === $Failed, None, ToExpression[job]]],
-  $Failed];
 $WorkerID = Check[
   With[
-    {id = Environment["HPC_JOB"]},
+    {id = Environment["PBS_ARRAYID"]},
     If[id === $Failed, None, ToExpression[id]]],
   $Failed];
-$JobInitFile = Replace[Environment["HPC_MMA_INIT_DATA"], $Failed -> None];
+$JobName = Check[
+  With[
+    {job = Environment["PBS_JOBNAME"]},
+    If[job === $Failed,
+      None,
+      StringJoin[Riffle[Most@StringSplit[job, "-"], "-"]]]],
+  $Failed];
+$JobWorkingDirectory = Check[
+  FileNameJoin[
+    {Environment["SCRATCH"],
+     ".nyu_hpc_math_jobs",
+     $JobName}],
+  $Failed];
+$JobInitFile = Check[FileNameJoin[{$JobWorkingDirectory, "init.m"}], $Failed];
 
 (* make sure those were found... *)
-If[$WorkerID === $Failed, JobError["WorkerID not found"]];
 If[$JobName === $Failed, JobError["JobName not found"]];
-If[$JobInitFile === $Failed, JobError["JobInitFile not found"]];
+If[$WorkerID === $Failed, JobError["WorkerID not found"]];
 If[$JobWorkingDirectory === $Failed, JobError["JobWorkingDirectory not found"]];
+If[$JobInitFile === $Failed, JobError["JobInitFile not found"]];
 
 (* import the initialization file *)
 $WorkerInitStatus = Check[Get[$JobInitFile], $Failed];
 If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 
 (* Protect our definitions... *)
-Protect[JobError, JobMessage, JobSuccess, JobWarning, $WorkerID, $JobInitFile, $WorkerInitStatus, $JobName];
+Protect[JobError, JobMessage, JobSuccess, JobWarning, 
+        $WorkerID, $WorkerInitStatus, $JobInitFile, $JobName, $JobWorkingDirectory];
 
 End[];
 EndPackage[];
