@@ -17,13 +17,14 @@ BeginPackage["NYUHPC`"];
 Unprotect["NYUHPC`*", "NYUHPC`Private`*"];
 ClearAll["NYUHPC`*", "NYUHPC`Private`*"];
 
-HPCStatus::usage = "HPCStatus[name, n, fn] launches a job that runs the given fn with a single argument, the worker ID number, on n different worker nodes on the NYU HPC. The worker ID passed to the given function fn is always between 1 and n, inclusive. The following options may be given:
+HPCSubmit::usage = "HPCSubmit[name, n, fn] launches a job that runs the given fn with a single argument, the worker ID number, on n different worker nodes on the NYU HPC. The worker ID passed to the given function fn is always between 1 and n, inclusive. The following options may be given:
   * \"RunAt\" (default: Automatic) specifies the time to run the job, which should be given as a string formatted according to the date_time argument of qsub (see man qsub); Automatic causes the job to run immediately.
   * \"Resources\" (default: Automatic) specifies the resource requirement string for the qsub command (see man qsub, -l option).
   * \"Priority\" (default: 0) specifies the job's priority (must be between -1024 and 1023).
   * \"Overwrite\" (default: False) specifies whether a job with the same name should be overwritten or not.
   * \"Directory\" (default: \"~/math\") specifies the directory where we should place the jobs and results directory for this job.";
-HPCStatus::badarg = "Bad argument given to HPCStatus: `1`";
+HPCSubmit::badarg = "Bad argument given to HPCSubmit: `1`";
+HCPSubmit::ioerr = "Error during I/O with HPC: `1`";
 
 HPCConnection::usage = "HPCConnection[...] is a form used to hold information about a currently open connection to the NYU HPC.";
 HPCConnection::noconn = "No current default connection in $HPCCurrentConnection.";
@@ -34,7 +35,10 @@ HPCConnect::noconn = "HPCConnect was unable to connect to the remote host: `1`";
 HPCStatus::usage = "HPCStatus[conn] yields the current status of the given HPCConnection object conn.";
 HPCStatus::badstatus = "Status of given hpc object (`1`) is invalid for the given operation (`2`).";
 
+HPCMetaData::usage = "HPCMetaData[conn] yields an Association of the meta-data associated with the given HPCConnection conn.";
 HPCUsername::usage = "HPCUsername[conn] yields the username for the given HPCConnection conn.";
+HPCHost::usage = "HPCHost[conn] yields the host name for the given HPCConnection conn.";
+HPCEnvironment::usage = "HPCEnvironment[conn] yields the environment Association used to spawn the ssh client for the given HPCConnection conn.";
 
 HPCClose::usage = "HPCClose[conn] closes the given HPCConnection and yields True.";
 HPCClose::badstatus = "The status given of the process given to HPCClose (`1`) cannot be closed.";
@@ -58,17 +62,17 @@ HPCConnection /: ProcessObject[HPCConnection[u_, ___]] := u;
 HPCConnection /: ProcessStatus[hpc_HPCConnection] := ProcessStatus[ProcessObject[hpc]];
 MakeBoxes[hpc_HPCConnection, form_] := RowBox[
   {"HPCConnection","[",
+   HPCUsername[hpc],
+   ",",
    With[
      {status = HPCStatus[hpc]},
-   StyleBox[
-     HPCUsername[hpc],
-     ",",
-     "-"<>status<>"-",
-     FontColor -> Which[
-       status == "OKAY", Darker[Green, 1/4], 
-       status == "DONE", Blue,
-       status == "BUSY", Darker[Yellow, 1/4],
-       True, Red]]],
+     StyleBox[
+       "-"<>status<>"-",
+       FontColor -> Which[
+         status == "OKAY", Darker[Green, 1/4], 
+         status == "DONE", Blue,
+         status == "BUSY", Darker[Yellow, 1/4],
+         True, Red]]],
    "]"}];
 Protect[HPCConnection];
 
@@ -98,64 +102,34 @@ HPCPrep[hpc_HPCConnection] := Check[
       proc,
       (* The goal of this small bit of bash code is to do the following:
        *  (1) ensure that .Mathematica/nyu-hpc-mathematica exists and contains the git code
-       *  (2) ensure the nyu-hpc-mathematica/NYUHPCWorker.m has been linked to the Applications dir
-       *  (3) ensure the .nyu_hpc_math_jobs directory has been created in scratch
-       *  (4) ensure the .nyu_hpc_math_jobs directory has been created in archive
-       *  (5) ensure the .nyu_hpc_math_jobs directory has been created in home
+       *  (2) source the .Mathematica/nyu-hpc-mathematica/scripts/master_startup.sh script
        *)
       StringJoin[
-        "{ ",
+        "{ ( ",
         Riffle[
-          {Riffle[
-             {"[ -d ~/.Mathematica/Applications ]",
-              "\\mkdir -p ~/.Mathematica/Applications &> /dev/null",
-              "( \\echo fail_mkdir_1 && exit 1 )"},
-             " || "],
-           "\\cd ~/.Mathematica",
-           Riffle[
-             {"[ -d nyu-hpc-mathematica ]",
-              "\\git clone https://github.com/WinawerLab/nyu-hpc-mathematica &> /dev/null",
-              "( \\echo fail_git_clone && exit 1 )"},
-             " || "],
-           Riffle[
-             {{"( ", Riffle[{"\\cd nyu-hpc-mathematica",
-                             "\\git fetch --all &>/dev/null",
-                             "\\git reset --hard origin/master &>/dev/null",
-                             "\\cd .."},
-                            " && "], " )"},
-              "( \\echo fail_git_pull && exit 1 )"},
-             " || "],
-           Riffle[
-             {"[ -x nyu-hpc-mathematica/scripts/run_math_worker.sh ]",
-              "\\chmod 755 nyu-hpc-mathematica/scripts/run_math_worker.sh &> /dev/null",
-              "( \\echo fail_chmod && exit 1 )"},
-             " || "],
-           Riffle[
-             {"[ -a ~/.Mathematica/Applications/NYUHPCWorker.m ]",
-              "\\ln -s ~/.Mathematica/nyu-hpc-mathematica/NYUHPCWorker.m"
-               <> " ~/.Mathematica/Applications/NYUHPCWorker.m &> /dev/null",
-              "( \\echo fail_ln && exit 1 )"},
-             " || "],
-           "\\cd ~",
-           Riffle[
-             {"[ -d ~/.nyu_hpc_math_jobs ]",
-              "\\mkdir -p ~/.nyu_hpc_math_jobs &> /dev/null",
-              "( \\echo fail_mkdir_2 && exit 1 )"},
-             " || "],
-           Riffle[
-             {"[ -d $SCRATCH/.nyu_hpc_math_jobs ]",
-              "\\mkdir -p $SCRATCH/.nyu_hpc_math_jobs &> /dev/null",
-              "( \\echo fail_mkdir_3 && exit 1 )"},
-             " || "],
-           Riffle[
-             {"[ -d $ARCHIVE/.nyu_hpc_math_jobs ]",
-              "\\mkdir -p $ARCHIVE/.nyu_hpc_math_jobs &> /dev/null",
-              "( \\echo fail_mkdir_4 && exit 1 )"},
-             " || "],
-           "\\echo SUCCESS;"},
-          "; "],
-        " }; ",
-        "\\echo ", tag, ";\n"]];
+          {"[ -d ~/.Mathematica/Applications ]",
+           "\\mkdir -p ~/.Mathematica/Applications &> /dev/null",
+           "( \\echo fail_mkdir_1 && exit 1 )"},
+          " || "],
+        " ) && \\cd ~/.Mathematica && ( ",
+        Riffle[
+          {"[ -d nyu-hpc-mathematica ]",
+           "\\git clone https://github.com/WinawerLab/nyu-hpc-mathematica &> /dev/null",
+           "( \\echo fail_git_clone && exit 1 )"},
+          " || "],
+        " ) && ( ",
+        Riffle[
+          {"[ -r ~/.Mathematica/nyu-hpc-mathematica/scripts/master_startup.sh ]",
+           StringJoin @ Riffle[
+             {"( \\cd nyu-hpc-mathematica",
+              "\\git fetch --all &>/dev/null",
+              "\\git reset --hard origin/master &>/dev/null",
+              "\\cd .. )"},
+             " && "],
+           " ( \\echo fail_source_startup && exit 1 )"},
+          " || "],
+        " ); } && source ~/.Mathematica/nyu-hpc-mathematica/scripts/master_startup.sh",
+        "; \\echo ", tag, ";\n"]];
     StringTrim @ ReadString[proc, tag]],
   "FAIL"];
 Protect[HPCPrep];    
@@ -188,7 +162,10 @@ HPCConnect[username_String, OptionsPattern[]] := Check[
               $Failed],
             (* correct startup... *)
             With[
-              {conn = HPCConnection[proc, "OKAY", username]},
+              {conn = HPCConnection[
+                 proc,
+                 "OKAY",
+                 <|"Username" -> username, "Host" -> host, "Environment" -> env|>]},
               If[HPCPrep[conn] != "SUCCESS",
                 KillProcess[proc];
                 Message[HPCConnect::noconn, "could not initialize/verify remote math setup"];
@@ -211,8 +188,20 @@ HPCStatus[hpc:HPCConnection[_, status_, ___]] := With[
 Protect[HPCStatus];
 
 (* #HPCUsername ***********************************************************************************)
-HPCUsername[hpc:HPCConnection[_, _, uid_, ___]] := uid;
+HPCUsername[hpc_HPCConnection] := HPCMetaData[hpc]["Username"];
 Protect[HPCUsername];
+
+(* #HPCHost ***************************************************************************************)
+HPCHost[hpc_HPCConnection] := HPCMetaData[hpc]["Host"];
+Protect[HPCHost];
+
+(* #HPCEnvironment ********************************************************************************)
+HPCEnvironment[hpc_HPCConnection] := HPCMetaData[hpc]["Environment"];
+Protect[HPCEnvironment];
+
+(* #HPCMetaData ***********************************************************************************)
+HPCMetaData[hpc:HPCConnection[_, _, data_, ___]] := data;
+Protect[HPCMetaData];
 
 (* #HPCClose **************************************************************************************)
 HPCClose[hpc_HPCConnection] := With[
@@ -247,13 +236,17 @@ HPCReadOutput[stag_, etag_] := If[$HPCCurrentConnection === None,
 Protect[HPCReadOutput];
 
 (* #HPCCommand *)
-HPCCommand[conn_HPCConnection, args__] := With[
-  {cmd = StringJoin[Riffle[ToString /@ {args}, " "]],
-   stag = Unique["SOF"],
-   etag = Unique["EOF"]},
+Options[HPCCommand] = {Epilog -> None};
+HPCCommand[conn_HPCConnection, cmd_, OptionsPattern[]] := With[
+  {stag = Unique["SOF"],
+   etag = Unique["EOF"],
+   epi = OptionValue[Epilog]},
   WriteLine[
     ProcessObject[conn],
-    "{ echo " <> ToString[stag] <> " && " <> cmd <> " && echo " <> ToString[etag] <> "; }"];
+    StringJoin[
+      "{ echo " <> ToString[stag] <> " && " <> cmd <> " && echo " <> ToString[etag],
+      If[epi === None, "", "\n"<>epi],
+      "\n}\n"]];
   HPCReadOutput[conn, stag, etag]];
 HPCCommand[arg:Except[_HPCConnection], args___] := If[$HPCCurrentConnection === None,
   Message[HPCConnection::noconn],
@@ -277,13 +270,13 @@ HPCJobList[hpc_HPCConnection, type_] := If[HPCStatus[hpc] != "OKAY",
        True, type]},
     Join[
       If[MatchQ["Running", patt],
-        StringSplit[HPCCommand["\\ls $SCRATCH/.nyu_hpc_math_jobs"], "\n"],
+        StringSplit[HPCCommand[hpc, "\\ls $SCRATCH/.nyu_hpc_math_jobs"], "\n"],
         {}],
       If[MatchQ["Finished", patt],
-        StringSplit[HPCCommand["\\ls $HOME/.nyu_hpc_math_jobs"], "\n"],
+        StringSplit[HPCCommand[hpc, "\\ls $HOME/.nyu_hpc_math_jobs"], "\n"],
         {}],
       If[MatchQ["Archived", patt],
-        StringSplit[HPCCommand["\\ls $ARCHIVE/.nyu_hpc_math_jobs"], "\n"],
+        StringSplit[HPCCommand[hpc, "\\ls $ARCHIVE/.nyu_hpc_math_jobs"], "\n"],
         {}]]]];
 Protect[HPCJobList];
 
@@ -310,7 +303,7 @@ Options[HPCSubmit] = {
 HPCSubmit[name_String, n_, code_, opts___] := If[$HPCCurrentConnection === None,
   Message[HPCConnection::noconn],
   HPCSubmit[$HPCCurrentConnection, name, n, code, opts]];
-HPCSubmit[hpc_HPCCommection, name_String, n_, code_, OptionsPattern[]] := Catch[
+HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
   With[
     {runAt = OptionValue["RunAt"],
      resources = OptionValue["Resources"],
@@ -345,74 +338,67 @@ HPCSubmit[hpc_HPCCommection, name_String, n_, code_, OptionsPattern[]] := Catch[
         !IntegerQ[maxSim] || maxSim < 1, Message[
           HPCSubmit::badarg,
           "MaxSimultaneousJobs must be an integer > 0"],
-        !StringQ[baseDir] || !DirectoryQ[baseDir], Message[
-          HPCSubmit::badarg,
-          "directory must be an existing directory"],
         !TrueQ[overwrite] && DirectoryQ[FileNameJoin[{baseDir, "jobs", name}]], Message[
           HPCSubmit::badarg,
           "overwrite set to false and job directory already exists"]],
       Throw[$Failed]];
     (* Error checking is done; now we create job directories and a status file *)
-    If[
-      "OKAY" != HPCCommand[
-        hpc,
-        StringJoin[
-          "\\mkdir -p \"$HOME/.nyu_hpc_math_jobs/", name, "\" &>/dev/null",
-          " && \\mkdir \"$SCRATCH/.nyu_hpc_math_jobs/", name, "\" &>/dev/null",
-          " && \\echo \"Queued\" > \"$HOME/.nyu_hpc_math_jobs/", name, "/status.txt\"",
-          " && \\echo OKAY"]],
+    If["OKAY" != StringTrim@HPCCommand[hpc, "nyuhpc_setup_job "<>name],
       Throw[
         Message[HPCSubmit::ioerr, "Could not create job directories"];
         $Failed]];
     (* Create the init file... *)
-    If[
-      "OKAY" != HPCCommand[
-        hpc,
-        StringJoin[
-          "\\cat << EOF_EOF_EOF > \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/init.m\" && echo OKAY\n",
-          Block[
-            {NYUHPC`Private`RunWorker = code,
-             NYUHPC`Private`$Dependencies = deps},
-            Check[
-              StringJoin[
-                ToString[FullDefinition[NYUHPC`Private`RunWorker]],
-                "\n\n",
-                ToString[FullDefinition[NYUHPC`Private`$Dependencies]]],
-              Throw[
-                Message[HPCSubmit::ioerr, "Could not get FullDefinition of function"],
-                $Failed]]],
-          "EOF_EOF_EOF\n"]],
-      Throw[
-        Message[HPCSubmit::ioerr, "Could not create job directories"];
-        $Failed]];
+    With[
+      {tmpdir = CreateDirectory[]},
+      (* save the data... *)
+      Block[
+        {NYUHPC`Private`RunWorker = code,
+         NYUHPC`Private`$Dependencies = deps},
+        Save[
+          FileNameJoin[{tmpdir, "init.m"}],
+          {NYUHPC`Private`RunWorker, NYUHPC`Private`$Dependencies}]];
+      (* scp it to the remote host *)
+      With[
+        {res = RunProcess[
+           {"scp", "-q", "-C", FileNameJoin[{tmpdir, "init.m"}],
+            StringJoin[
+              HPCUsername[hpc], "@", HPCHost[hpc], 
+              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}]},
+        If[res["ExitCode"] == 0,
+          (DeleteFile[FileNameJoin[{tmpdir, "init.m"}]];
+           DeleteDirectory[tmpdir]),
+          Throw[
+            Message[HPCSubmit::ioerr, "Could not scp init.m file"];
+            $Failed]]]];
     (* Create the script file *)
     If[
-      "OKAY" != HPCCommand[
+      "OKAY" != StringTrim@HPCCommand[
         hpc,
         StringJoin[
-          {"\\cat << EOF_EOF_EOF > \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/run.sh\"",
-           " && \\cat $HOME/.Mathematica/nyu-hpc-mathematica/scripts/run_math_worker.sh",
-           " >> \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/run.sh\""
-           " && \\echo OKAY\n"},
+          "\\cat << EOF_EOF_EOF > \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/run.sh\"",
+          " && \\cat $HOME/.Mathematica/nyu-hpc-mathematica/scripts/run_math_worker.sh",
+          " >> \"$SCRATCH/.nyu_hpc_math_jobs/", name, "/run.sh\"",
+          " && \\echo OKAY"],
+        Epilog -> StringJoin[
           "#! /bin/bash\n",
           "#PBS -N ", name, "\n",
           "#PBS -d $SCRATCH/.nyu_hpc_math_jobs/", name, "\n",
-          "#PBS -o $SCRATCH/.nyu_hpc_math_jobs/", name, "/log-${PBS_ARRAYID}.txt\n",
+          "#PBS -o $SCRATCH/.nyu_hpc_math_jobs/", name, "/log-\\${PBS_ARRAYID}.txt\n",
           "#PBS -j oe\n",
           "#PBS -l walltime=", walltime, "\n",
-          "#PBS -t 1-", ToString[n], If[maxSim > n, "%"<>ToString[maxSim], ""], "\n",
+          "#PBS -t 1-", ToString[n], If[maxSim < n, "%"<>ToString[maxSim], ""], "\n",
           If[StringQ[rscArg], "#PBS -l " <> rscArg <> "\n", ""],
           If[priority =!= Automatic, "#PBS -p " <> ToString[priority] <> "\n", ""],
           If[runAt =!= Automatic, "#PBS -a " <> runAt <> "\n", ""],
+          "\n",
           "EOF_EOF_EOF\n"]],
       Throw[
         Message[HPCSubmit::ioerr, "Could not create job script"];
         $Failed]];
     (* finally, we run the qsub command itself *)
-    (*HPCCommand[
+    HPCCommand[
       hpc,
-      "/share/apps/admins/torque/qsub.sh \"$SCRATCH/.nyu_hpc_math_jobs/" <> name <> "/run.sh\""]*)
-    True]];
+      "/share/apps/admins/torque/qsub.sh \"$SCRATCH/.nyu_hpc_math_jobs/" <> name <> "/run.sh\""]]];
 Protect[HPCSubmit];
 
 End[];
