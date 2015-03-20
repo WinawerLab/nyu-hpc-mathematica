@@ -57,7 +57,7 @@ JobExport[name_String, data_, args___] := (
     args]);
 JobWarning[msg___] := PutAppend[
   StringJoin[ToString /@ {msg}],
-  FileNameJoin[{$JobWorkingDirectory, "warnings-"<>IntegerString[$WorkerID, 10, 4]<>".txt"}];
+  FileNameJoin[{$JobWorkingDirectory, "warnings-"<>IntegerString[$WorkerID, 10, 4]<>".txt"}]];
 
 (* first, set our basic variables *)
 $WorkerID = Check[
