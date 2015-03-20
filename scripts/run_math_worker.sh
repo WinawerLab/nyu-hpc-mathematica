@@ -24,6 +24,8 @@ MATH_SCRIPT="$HOME/.Mathematica/nyu-hpc-mathematica/scripts/run.m"
 function math_run {
     RUNFILE="$HOME/.nyu_hpc_math_jobs/$1/running-${PBS_ARRAYID}.txt"
     \date > "$RUNFILE"
+    [ `\cat "$HOME/.nyu_hpc_math_jobs/$1/status.txt"` = "Queued" ] \
+        && \echo "Running" > "$HOME/.nyu_hpc_math_jobs/$1/status.txt"
     "$MATH_CMD" -noprompt -script "$MATH_SCRIPT"
     \rm -f "$RUNFILE"
 }
