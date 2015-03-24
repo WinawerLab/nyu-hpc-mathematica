@@ -1,12 +1,13 @@
 #!/bin/bash
-#PBS -N math_job_cleanup_${FINISHED_JOB_ID}
+#PBS -N math_job_cleanup_____FINISHED_JOB_ID____
 #PBS -l walltime=0:30:00
 #PBS -l proc=1
 #PBS -l mem=128mb
 #PBS -o $HOME/.nyu_hpc_math_jobs/cleanup.log
 #PBS -j oe
-#PBS -W depend=afteranyarray:${FINISHED_JOB_ID}
-#PBS -v FINISHED_JOB_ID=${FINISHED_JOB_ID},FINISHED_JOB_NAME=${FINISHED_JOB_NAME}
+#PBS -W depend=afteranyarray:____FINISHED_JOB_ID____
+#PBS -v FINISHED_JOB_ID=____FINISHED_JOB_ID____
+#PBS -v FINISHED_JOB_NAME=____FINISHED_JOB_NAME____
 
 # This script is run as a job that cleans up other Mathematica jobs.
 # We can assume, based on the dependency, that the job given in FINISHED_JOB_ID has already been
@@ -43,7 +44,7 @@ RES_DIR="$HOME/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/results"
 \mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/" "$RES_DIR/" \
     || die "Could not move results to home!"
 
-# Last, we fix the status to be complete
+# Okay, we can fix the status to be complete
 \echo "Complete" > "$HOME/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/status.txt"
 
 
