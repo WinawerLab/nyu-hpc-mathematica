@@ -510,7 +510,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
               ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}]},
         If[res["ExitCode"] == 0,
           (DeleteFile[FileNameJoin[{tmpdir, "init.m"}]];
-           DeleteDirectory[tmpdir]),
+           DeleteDirectory[tmpdir, DeleteContents -> True]),
           Throw[
             Message[HPCSubmit::ioerr, "Could not scp init.m file"];
             $Failed]]]];
@@ -611,7 +611,7 @@ HPCResult[conn_HPCConnection, name_String, id_Integer] := If[HPCStatus[conn] != 
                   If[procRes["ExitCode"] == 0,
                     Get[FileNameJoin[{dir, "import.m"}]],
                     NYUHPCWorker`Private`result = $Failed];
-                  DeleteDirectory[dir];
+                  DeleteDirectory[dir, DeleteContents -> True];
                   NYUHPCWorker`Private`result]]],
             True, Indeterminate]],
         "Archived", With[
