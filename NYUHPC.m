@@ -51,6 +51,17 @@ HPCJobList[] is equivalend to HPCJobList[$HPCCurrentConnection].
 HPCJobList[type] is equivalend to HPCJobList[$HPCCurrentConnection, type].";
 HPCJobInfo::usage = "HPCJobInfo[conn, name] yields an Association of data relevant to the job named by the given name string.";
 
+HPCJobStatus::usage = "HPCJobStatus[conn, name] yields the status (Queued, Running, Complete, Archived) of each of the job with the given name, using the given HPCConnection conn.
+The conn argument may be excluded in which case it is replaced with $HPCCurrentConnection.";
+
+HPCWorkerCount::usage = "HPCWorkerCount[conn, name] yields the number of workers assigned to the job with the given name for the given HPC connection conn. If the job is not found, $Failed is returned.
+The argument conn may be excluded in which case it is replaced with $HPCCurrentConnection.";
+
+HPCWorkerStatus::usage = "HPCWorkerStatus[conn, name, id] yields that status (Queued, Running, Success, Error) of the worker identified by the given id for the job with the given name, using the HPCConnection conn.
+HPCWorkerStatus[conn, name] yields a list of the worker status for each worker in the job with the given name.
+The conn argument may be excluded, in which case it is replaced with $HPCCurrentConnection.";
+HPCWorkerStatus::badarg = "Bad argument given to HPCWorkerStatus: `1`";
+
 $HPCCurrentConnection::usage = "$HPCCurrentConnection is a variable that contains the current HPC connection; this is the last connection opened using HPCConnect[]. Certain HPC functions use this value by default (e.g., HPCRun). The variable is not protected and may be set.";
 
 Begin["`Private`"];
@@ -280,15 +291,140 @@ HPCJobList[hpc_HPCConnection, type_] := If[HPCStatus[hpc] != "OKAY",
         {}]]]];
 Protect[HPCJobList];
 
+(* #HPCWorkerCount ********************************************************************************)
+HPCWorkerCount[name_String] := If[$HPCCurrentConnection === None,
+  Message[HPCConnection::noconn],
+  HPCWorkerCount[$HPCCurrentConnection, name]];
+HPCWorkerCount[conn_HPCConnection, name_String] := If[HPCStatus[conn] != "OKAY",
+  Message[HPCStatus::badstatus, HPCStatus[conn], "HPCWorkerCount"],
+  Switch[
+    HPCJobStatus[conn, name],
+    "Nonexistant", $Failed,
+    "Archived", ToExpression @ HPCCommand[
+      conn,
+      With[
+        {arch = "\"$ARCHIVE/.nyu_hpc_math_jobs/" <> name <> ".tar.gz\""},
+        StringJoin[
+          "( [ -r ", arch, "] && \\tar zxfO ", arch, " \"", name, "/worker_count.txt\" )",
+          " || \\echo \"\$Failed\""]]],
+    _, ToExpression @ HPCCommand[
+      StringJoin[
+        "( [ -r \"$HOME/.nyu_hpc_math_jobs/", name, "/worker_count.txt\" ]",
+        "  && \\cat \"$HOME/.nyu_hpc_math_jobs/", name, "/worker_count.txt\" )",
+        " || \\echo \"\$Failed\""]]]];
+
 (* #HPCJobStatus **********************************************************************************)
 HPCJobStatus[name_String] := If[$HPCCurrentConnection === None,
   Message[HPCConnection::noconn],
   HPCJobStatus[$HPCCurrentConnection, name]];
-HPCJobStatus[conn_HPCConnection, name_String] := If[HPCStatus[hpc] != "OKAY",
-  Message[HPCStatus::badstatus, HPCStatus[hpc], "HPCJobList"],
-  Indeterminate];
+HPCJobStatus[conn_HPCConnection, name_String] := If[HPCStatus[conn] != "OKAY",
+  Message[HPCStatus::badstatus, HPCStatus[conn], "HPCJobList"],
+  StringTrim @ HPCCommand[
+    conn,
+    With[
+      {arch = "\"$ARCHIVE/.nyu_hpc_math_jobs/" <> name <> ".tar.gz\"",
+       stat = "\"$HOME/.nyu_hpc_math_jobs/" <> name <> "/status.txt\""},
+    StringJoin[
+      "( [ -a ", arch, " ] && echo Archived )",
+      " || ( [ -r ", stat, " ] && cat ", stat, " )",
+      " || echo Nonexistant"]]]];
 Protect[HPCJobStatus];
-  
+
+(* #HPCArchivedWorkerStatus ***********************************************************************)
+HPCArchivedWorkerStatus[conn_HPCConnection, name_String] := If[HPCStatus[conn] != "OKAY",
+  Message[HPCStatus::badstatus, HPCStatus[conn], "HPCJobList"],
+  Check[
+    With[
+      {jobStatus = HPCJobStatus[conn, name],
+       n = HPCWorkerCount[conn, name],
+       file = "\"$ARCHIVE/.nyu_hpc_math_jobs/"<>name<>".tar.gz\""},
+      If[jobStatus != "Archived", 
+        $Failed,
+        With[
+          {arch = "\"$ARCHIVE/.nyu_hpc_math_jobs/" <> name <> ".tar.gz\""},
+          (* we need to look through the archived directory *)
+          Part[
+            SortBy[
+              Map[
+                Function[
+                  {If[StringMatchQ[#, __ ~~ "/results/success-" ~~ DigitCharacter .. ~~ ".m"], 
+                     "OKAY",
+                     "ERROR"],
+                   ToExpression[StringTake[#, {-6, -3}]]}],
+                Select[
+                  StringSplit[
+                    HPCCommand[conn, "\\tar ztf " <> arch],
+                    "\n"],
+                  Function @ StringMatchQ[
+                    #,
+                    (name<>"/results/") ~~ {"success-","error-"} ~~ (DigitCharacter..) ~~ ".m"]]]],
+              Last],
+            All, 1]]],
+    $Failed]];
+Protect[HPCArchivedWorkerStatus];
+
+(* $HPCWorkerCheckStatus **************************************************************************)
+HPCHomeFile[s___] := StringJoin["\"$HOME/.nyu_hpc_math_jobs/", s, "\""];
+HPCScratchFile[s___] := StringJoin["\"$SCRATCH/.nyu_hpc_math_jobs/", s, "\""];
+HPCWorkerCheckStatus[conn_HPCConnection, name_String, id_Integer] := With[
+  {res = StringTrim @ HPCCommand[
+     conn,
+     StringJoin[
+       "( [ -r ", HPCHomeFile[name, "/queued-", ToString[id], ".txt"], " ]",
+       "  && \\echo Queued",
+       ") || (",
+       "  [ -r ", HPCHomeFile[name, "/running-", ToString[id], ".txt"], " ]",
+       "  && \\echo Running ",
+       ") || (",
+       "  [ -r ", HPCHomeFile[name, "/results/success-", IntegerString[id,10,4], ".txt"], " ]",
+       "  && \\echo OKAY ",
+       ") || (",
+       "  [ -r ", HPCHomeFile[name, "/results/error-", IntegerString[id,10,4], ".txt"], " ]",
+       "  && \\echo ERROR ",
+       ") || (",
+       "  [ -r ", HPCScratchFile[name, "/success-", IntegerString[id,10,4], ".txt"], " ]",
+       "  && \\echo OKAY ",
+       ") || (",
+       "  [ -r ", HPCScratchFile[name, "/error-", IntegerString[id,10,4], ".txt"], " ]",
+       "  && \\echo ERROR ",
+       ") || \\echo \\$Failed"]]},
+  If[res == "$Failed", $Failed, res]];
+Protect[HPCHomeFile, HPCScratchFile, HPCWorkerCheckStatus];
+
+(* #HPCWorkerStatus *******************************************************************************)
+HPCWorkerStatus[name_String] := If[$HPCCurrentConnection === None,
+  Message[HPCConnection::noconn],
+  HPCWorkerStatus[$HPCCurrentConnection, name]];
+HPCWorkerStatus[name_String, id_Integer] := If[$HPCCurrentConnection === None,
+  Message[HPCConnection::noconn],
+  HPCWorkerStatus[$HPCCurrentConnection, name, id]];
+HPCWorkerStatus[conn_HPCConnection, name_String, id_Integer] := If[HPCStatus[conn] != "OKAY",
+  Message[HPCStatus::badstatus, HPCStatus[conn], "HPCJobList"],
+  Check[
+    With[
+      {jobStatus = HPCJobStatus[conn, name],
+       n = HPCWorkerCount[conn, name]},
+      If[id <= 0 || id > n,
+        Message[HPCWorkerStatus::badarg, "id must be between 1 and the number of workers"]];
+      Switch[
+        jobStatus,
+        "Nonexistant", $Failed,
+        "Archived", HPCArchivedWorkerStatus[conn, name][[id]],
+        _, HPCWorkerCheckStatus[conn, name, id]]],
+    $Failed]];
+HPCWorkerStatus[conn_HPCConnection, name_String] := If[HPCStatus[conn] != "OKAY",
+  Message[HPCStatus::badstatus, HPCStatus[conn], "HPCJobList"],
+  Check[
+    With[
+      {jobStatus = HPCJobStatus[conn, name],
+       n = HPCWorkerCount[conn, name]},
+      Switch[
+        jobStatus,
+        "Nonexistant", $Failed,
+        "Archived", HPCArchivedWorkerStatus[conn, name],
+        _, HPCWorkerCheckStatus[conn, name, #]& /@ Range[n]]],
+    $Failed]];
+Protect[HPCWorkerStatus];
 
 (* #HPCSubmit *************************************************************************************)
 Options[HPCSubmit] = {
@@ -343,7 +479,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
           "overwrite set to false and job directory already exists"]],
       Throw[$Failed]];
     (* Error checking is done; now we create job directories and a status file *)
-    If["OKAY" != StringTrim@HPCCommand[hpc, "nyuhpc_setup_job "<>name],
+    If["OKAY" != StringTrim@HPCCommand[hpc, "nyuhpc_setup_job \""<>name<>"\" "<>ToString[n]],
       Throw[
         Message[HPCSubmit::ioerr, "Could not create job directories"];
         $Failed]];
@@ -383,7 +519,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
           "#! /bin/bash\n",
           "#PBS -N ", name, "\n",
           "#PBS -d $SCRATCH/.nyu_hpc_math_jobs/", name, "\n",
-          "#PBS -o $SCRATCH/.nyu_hpc_math_jobs/", name, "/log-\\${PBS_ARRAYID}.txt\n",
+          "#PBS -o $SCRATCH/.nyu_hpc_math_jobs/", name, "/worker_log.txt\n",
           "#PBS -j oe\n",
           "#PBS -l walltime=", walltime, "\n",
           "#PBS -t 1-", ToString[n], If[maxSim < n, "%"<>ToString[maxSim], ""], "\n",
@@ -395,10 +531,30 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
       Throw[
         Message[HPCSubmit::ioerr, "Could not create job script"];
         $Failed]];
-    (* finally, we run the qsub command itself *)
-    HPCCommand[
-      hpc,
-      "/share/apps/admins/torque/qsub.sh \"$SCRATCH/.nyu_hpc_math_jobs/" <> name <> "/run.sh\""]]];
+    (* okay, now, we run the qsub command itself *)
+    With[
+      {idstr = StringTrim @ HPCCommand[
+         hpc,
+         "/share/apps/admins/torque/qsub.sh \"$SCRATCH/.nyu_hpc_math_jobs/" <> name <> "/run.sh\""]},
+      If[StringLength[idstr] < 3 || StringTake[idstr, {-2,-1}] != "[]",
+        $Failed -> idstr,
+        (* we need to submit one more job that cleans this job up... first, make a cleanup script *)
+        With[
+          {cleaner = HPCHomeFile[name, "/cleanup.sh"]},
+          If[
+            "OKAY" != StringTrim @ HPCCommand[
+              hpc,
+              StringJoin[
+                "( \\sed 's/____FINISHED_JOB_ID____/", idstr, "/g'",
+                "    \"$HOME/.Mathematica/nyu-hpc-mathematica/scripts/cleanup.sh\"",
+                "  | \\sed 's/____FINISHED_JOB_NAME____/", name, "/g'",
+                "  > ", cleaner, 
+                "  && \\chmod 755 ", cleaner, " && \\echo OKAY ",
+                ") || \\echo ERROR"]],
+            Message[HPCSubmit::ioerr, "Could create cleanup job"],
+            HPCCommand[
+              hpc,
+              "/share/apps/admins/torque/qsub.sh "<>cleaner<>" &>/dev/null && \\echo OKAY"]]]]]]];
 Protect[HPCSubmit];
 
 End[];

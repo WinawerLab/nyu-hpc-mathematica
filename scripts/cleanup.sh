@@ -1,5 +1,5 @@
 #!/bin/bash
-#PBS -N math_job_cleanup_____FINISHED_JOB_ID____
+#PBS -N math_job_cleanup_____FINISHED_JOB_NAME____
 #PBS -l walltime=0:30:00
 #PBS -l proc=1
 #PBS -l mem=128mb
