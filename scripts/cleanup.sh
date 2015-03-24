@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N math_job_cleanup_____FINISHED_JOB_NAME____
 #PBS -l walltime=0:30:00
-#PBS -l proc=1
+#PBS -l procs=1
 #PBS -l mem=128mb
 #PBS -o $HOME/.nyu_hpc_math_jobs/cleanup.log
 #PBS -j oe
