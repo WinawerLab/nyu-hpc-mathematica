@@ -26,8 +26,21 @@ Mathematica to see its documentation).
   * HPCSubmit\[connection, name, workerCount, function\] submits an array job
     with the given name consisting of workerCount workers, each of which runs
     the given function with a single argument (the worker ID, which is in the
-    range 1 to workerCount, inclusive). 
+    range 1 to workerCount, inclusive).
+  * HPCJobStatus\[connection, name\] yields the status of the given job name.
+  * HPCWorkerStatus\[connection, name\] yields the status of the individual
+    workers in the job with the given name.
+  * HPCResult\[connection, name\] yields a list of the result of each worker,
+    assuming that job has completed.
 
+#### Security Note #############################################################
+
+This toolbox is not designed to be secure. While the connection to the server is
+performed with the ssh program exclusively, this toolbox happily reads and
+executes code generated on the server by your workers. It does not check to make
+sure that this code is not malicious, and someone with access to your HPC
+account could, for example, easily hijack your desktop from which you submitted
+the job. Be careful, and do not share your passwords.
 
 ## License #####################################################################
 
