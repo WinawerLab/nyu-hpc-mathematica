@@ -3,7 +3,7 @@
 #PBS -l walltime=0:30:00
 #PBS -l procs=1
 #PBS -l mem=128mb
-#PBS -o $HOME/.nyu_hpc_math_jobs/cleanup.log
+#PBS -o $HOME/.nyu_hpc_math_jobs/____FINISHED_JOB_NAME____/cleanup.log
 #PBS -j oe
 #PBS -W depend=afteranyarray:____FINISHED_JOB_ID____
 #PBS -v FINISHED_JOB_ID=____FINISHED_JOB_ID____
@@ -35,7 +35,7 @@ RES_DIR="$HOME/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/results"
 [ -d "$DET_DIR" ] || \mkdir -p "$DET_DIR" || die "Could not create details directory"
 
 # First, we want to move all logs to the home directory
-\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/worker_log.txt-*" "$LOG_DIR/"
+\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME"/worker_log.txt-* "$LOG_DIR/"
 
 # Then, we move the scripts to the details dir
 \mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/worker_log.txt-*" "$DET_DIR/"
