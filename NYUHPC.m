@@ -284,7 +284,7 @@ HPCJobList[hpc_HPCConnection, type_] := If[HPCStatus[hpc] != "OKAY",
        type === Automatic, "Finished"|"Running", 
        type === All, "Finished"|"Running"|"Archived",
        True, type]},
-    Join[
+    Union @ Join[
       If[MatchQ["Running", patt],
         StringSplit[HPCCommand[hpc, "\\ls $SCRATCH/.nyu_hpc_math_jobs"], "\n"],
         {}],
