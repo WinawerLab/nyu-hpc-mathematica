@@ -1,0 +1,414 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     14074,        405]
+NotebookOptionsPosition[     11928,        323]
+NotebookOutlinePosition[     12287,        339]
+CellTagsIndexPosition[     12244,        336]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+
+Cell[CellGroupData[{
+Cell["Include the NYUHPC namespace", "Subsection",
+ CellChangeTimes->{{3.636223343926882*^9, 3.636223351126808*^9}}],
+
+Cell[BoxData[
+ RowBox[{"<<", "NYUHPC`"}]], "Input",
+ CellChangeTimes->{{3.635693260688951*^9, 3.635693267416106*^9}, {
+  3.636223328874415*^9, 3.636223331383144*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Connect to the HPC", "Subsection",
+ CellChangeTimes->{{3.636223356076879*^9, 3.636223359215601*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"conn", "=", 
+  RowBox[{"HPCConnect", "[", "\"\<nb95\>\"", "]"}]}]], "Input",
+ CellChangeTimes->{{3.635700758968923*^9, 3.6357007646556787`*^9}, {
+   3.635701299449403*^9, 3.635701326415289*^9}, {3.63570243740559*^9, 
+   3.635702437645977*^9}, {3.635702709837864*^9, 3.635702718230506*^9}, {
+   3.63570280514216*^9, 3.635702822856455*^9}, {3.635703122619172*^9, 
+   3.6357031229865923`*^9}, {3.6357040354466877`*^9, 3.635704048251688*^9}, {
+   3.6357062050183973`*^9, 3.635706208684453*^9}, 3.635768644435046*^9, {
+   3.635772059317437*^9, 3.6357720609695253`*^9}, {3.636222544342925*^9, 
+   3.636222554993678*^9}}],
+
+Cell[BoxData[
+ RowBox[{"HPCConnection", "[", "nb95", ",", 
+  StyleBox[
+   RowBox[{
+    RowBox[{"-", "OKAY"}], "-"}],
+   FontColor->RGBColor[0, 
+     Rational[3, 4], 0]], "]"}]], "Output",
+ CellChangeTimes->{
+  3.6357686472316103`*^9, 3.635768757225593*^9, 3.6357688485329447`*^9, 
+   3.635769034921727*^9, 3.635770942061363*^9, 3.635772064097271*^9, 
+   3.635772107735056*^9, 3.6357840142471933`*^9, {3.635784935346252*^9, 
+   3.635784948657176*^9}, 3.6357858945518217`*^9, 3.63579090938912*^9, 
+   3.635790966870947*^9, 3.635791099294179*^9, 3.635791315154512*^9, 
+   3.63579157936349*^9, 3.6357917948771973`*^9, 3.635791891123823*^9, 
+   3.635791974268305*^9, 3.635792069405698*^9, 3.635792137649095*^9, 
+   3.635792256453723*^9, 3.635792428689678*^9, 3.63579258068427*^9, 
+   3.635792736311295*^9, 3.6357928618007402`*^9, 3.635793021488121*^9, 
+   3.6357930798173447`*^9, 3.635793230219046*^9, 3.6358712691289263`*^9, 
+   3.6358725525075283`*^9, 3.636202808317522*^9, 3.636210363137684*^9, 
+   3.6362120590421553`*^9, 3.6362149040426893`*^9, 3.636215337998477*^9, 
+   3.636215510264806*^9, 3.6362200011719093`*^9, 3.63622255842516*^9, 
+   3.636223990102249*^9}]
+}, Open  ]],
+
+Cell["\<\
+You must enable passwordless login for this to work; NYUHPC has no means to \
+obtain your password. Additionally, you must be able to call ssh and scp \
+using the StartProcess[] and RunProcess[] commands in order for this toolbox \
+to work.\
+\>", "Text",
+ CellChangeTimes->{{3.636223361746915*^9, 3.63622351606411*^9}}],
+
+Cell["\<\
+Note that the use of this toolbox requires absolutely no setup on the HPC \
+itself; that said, the toolbox will install various hidden directories on \
+your HPC account as soon as it connects, automatically. This is not something \
+that one must worry about, but for completeness, the directories created and \
+managed by NYUHPC are:
+$HOME/.nyu_hpc_math_jobs
+$SCRATCH/.nyu_hpc_math_jobs
+$ARCHIVE/.nyu_hpc_math_jobs
+$HOME/.Mathematica/nyu-hpc-mathematica
+
+The final of these directories holds the git repository for the NYUHPC \
+toolbox; various of the scripts contained there are called directly by the \
+jobs submitted by the toolbox. Each time a connection is made to the HPC, \
+this git repository is cleaned and reset, so do not make modifications to it \
+that you intend to keep.\
+\>", "Text",
+ CellChangeTimes->{{3.636223517683681*^9, 3.636223704648999*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Submit a Job", "Subsection",
+ CellChangeTimes->{{3.636223707326682*^9, 3.636223710521492*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["A Function for the Job to work on:", "Subsubsection",
+ CellChangeTimes->{{3.636223720658614*^9, 3.636223726057911*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"ChewOnImage", "[", 
+    RowBox[{"i_Integer", ",", "m_Integer"}], "]"}], ":=", 
+   RowBox[{"Table", "[", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"ImageAdjust", "@", 
+      RowBox[{"GradientFilter", "[", "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"ExampleData", "[", 
+         RowBox[{
+          RowBox[{"ExampleData", "[", "\"\<TestImage\>\"", "]"}], "[", 
+          RowBox[{"[", "k", "]"}], "]"}], "]"}], ",", "\[IndentingNewLine]", 
+        "5"}], "]"}]}], ",", "\[IndentingNewLine]", 
+     RowBox[{"{", 
+      RowBox[{"k", ",", "i", ",", 
+       RowBox[{"Length", "[", 
+        RowBox[{"ExampleData", "[", "\"\<TestImage\>\"", "]"}], "]"}], ",", 
+       "m"}], "}"}]}], "]"}]}], ";"}]], "Input",
+ CellChangeTimes->{{3.635784092824595*^9, 3.63578413298286*^9}, {
+  3.6357842133668327`*^9, 3.635784223748464*^9}, {3.635784254449839*^9, 
+  3.635784370991579*^9}, {3.635784450281843*^9, 3.635784502121323*^9}, {
+  3.6357845364708233`*^9, 3.63578454036092*^9}, {3.6362246017684526`*^9, 
+  3.6362246493407593`*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Actually perform the submission:", "Subsubsection",
+ CellChangeTimes->{{3.6362238281748257`*^9, 3.6362238348347054`*^9}}],
+
+Cell["\<\
+Here, we submit a job named \[OpenCurlyDoubleQuote]hpc_submit_test\
+\[CloseCurlyDoubleQuote], which will request 5 worker processes, each of \
+which will run the ChewOnImage function with the first argument being their \
+worker id and the second argument being 5.\
+\>", "Text",
+ CellChangeTimes->{{3.636223931259104*^9, 3.636223974380393*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCSubmit", "[", "\[IndentingNewLine]", 
+  RowBox[{"(*", " ", 
+   RowBox[{"job", " ", "is", " ", "named", " ", "hpc_submit", "_test"}], " ", 
+   "*)"}], "\[IndentingNewLine]", 
+  RowBox[{"\"\<hpc_submit_test\>\"", ",", "\[IndentingNewLine]", 
+   RowBox[{"(*", " ", 
+    RowBox[{"we", " ", "want", " ", "5", " ", "workers"}], " ", "*)"}], 
+   "\[IndentingNewLine]", "5", ",", "\[IndentingNewLine]", 
+   RowBox[{"(*", " ", 
+    RowBox[{
+    "each", " ", "of", " ", "which", " ", "will", " ", "call", " ", "this", 
+     " ", "function", " ", "with", " ", "their", " ", "worker", " ", "id"}], 
+    " ", "*)"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"ChewOnImage", "[", 
+     RowBox[{"#", ",", "5"}], "]"}], "&"}]}], "]"}]], "Input",
+ CellChangeTimes->{{3.6357838467077103`*^9, 3.635783851201723*^9}, {
+  3.635783901456471*^9, 3.63578392838864*^9}, {3.635784087424816*^9, 
+  3.635784088200016*^9}, {3.6357845468960857`*^9, 3.635784550034894*^9}, {
+  3.635784585991716*^9, 3.6357846123304987`*^9}, {3.635785729786573*^9, 
+  3.635785732707171*^9}, {3.6358723732360783`*^9, 3.63587238858116*^9}, {
+  3.636210518349963*^9, 3.636210519093193*^9}, {3.6362226586183157`*^9, 
+  3.636222673687539*^9}, {3.636223812717407*^9, 3.636223923904378*^9}, {
+  3.636223977655243*^9, 3.636223979095187*^9}}],
+
+Cell[BoxData["\<\"OKAY\"\>"], "Output",
+ CellChangeTimes->{3.636223998679905*^9, 3.6362247646328506`*^9}]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Lookup Information on the Job", "Subsection",
+ CellChangeTimes->{{3.636224002697164*^9, 3.636224006736031*^9}}],
+
+Cell[CellGroupData[{
+
+Cell["What jobs are running and/or finished?", "Subsubsection",
+ CellChangeTimes->{{3.6362240096158*^9, 3.636224015049837*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCJobList", "[", "]"}]], "Input",
+ CellChangeTimes->{{3.636222697891509*^9, 3.6362227003337593`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"\<\"hpc_submit_test\"\>", ",", "\<\"mma_test_004\"\>"}], 
+  "}"}]], "Output",
+ CellChangeTimes->{{3.636222700714316*^9, 3.636222728934791*^9}, 
+   3.636222800984095*^9, 3.6362240164218597`*^9}]
+}, Open  ]],
+
+Cell["What about just the running jobs?", "Text",
+ CellChangeTimes->{{3.636224019909536*^9, 3.6362240285606728`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCJobList", "[", "\"\<Running\>\"", "]"}]], "Input",
+ CellChangeTimes->{{3.6362240306912947`*^9, 3.6362240354800167`*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", "\<\"hpc_submit_test\"\>", "}"}]], "Output",
+ CellChangeTimes->{3.636224035830762*^9}]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["What is the status of the job?", "Subsubsection",
+ CellChangeTimes->{{3.636224041262597*^9, 3.6362240475063057`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCJobStatus", "[", "\"\<hpc_submit_test\>\"", "]"}]], "Input",
+ CellChangeTimes->{{3.636222678446005*^9, 3.636222684290081*^9}, {
+  3.6362240515599937`*^9, 3.636224053716527*^9}}],
+
+Cell[BoxData["\<\"Running\"\>"], "Output",
+ CellChangeTimes->{{3.636222684577667*^9, 3.636222694170437*^9}, {
+   3.636222800001007*^9, 3.6362228172252493`*^9}, 3.636224054322914*^9}]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Or the status of the workers?", "Subsubsection",
+ CellChangeTimes->{{3.636224066147545*^9, 3.636224069668871*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCWorkerStatus", "[", "\"\<hpc_submit_test\>\"", "]"}]], "Input",
+ CellChangeTimes->{{3.636222807871952*^9, 3.636222813745068*^9}, {
+  3.636224072777526*^9, 3.63622407468714*^9}}],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{"\<\"OKAY\"\>", ",", "\<\"OKAY\"\>", ",", "\<\"OKAY\"\>", 
+   ",", "\<\"OKAY\"\>", ",", "\<\"Running\"\>"}], "}"}]], "Output",
+ CellChangeTimes->{3.6362228141552153`*^9, 3.636224075325873*^9}]
+}, Open  ]],
+
+Cell["\<\
+\[OpenCurlyDoubleQuote]OKAY\[CloseCurlyDoubleQuote] indicates that the job \
+has finished without errors; if errors occur, then \
+\[OpenCurlyDoubleQuote]ERROR\[CloseCurlyDoubleQuote] or $Failed will appear \
+instead.\
+\>", "Text",
+ CellChangeTimes->{{3.636224777928954*^9, 3.6362247997873287`*^9}}]
+}, Open  ]]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Once finished, get the results", "Subsection",
+ CellChangeTimes->{{3.6362240939472647`*^9, 3.6362241060292177`*^9}}],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{
+    RowBox[{
+    "Wait", " ", "for", " ", "the", " ", "job", " ", "to", " ", "be", " ", 
+     "complete"}], "..."}], " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"While", "[", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"HPCJobStatus", "[", "\"\<hpc_submit_test\>\"", "]"}], 
+       "\[NotEqual]", "\"\<Complete\>\""}], ",", "\[IndentingNewLine]", 
+      RowBox[{"Pause", "[", "15", "]"}]}], "]"}], ";"}], 
+   "\[IndentingNewLine]", 
+   RowBox[{"(*", " ", 
+    RowBox[{"Then", " ", "get", " ", "the", " ", 
+     RowBox[{"results", "!"}]}], " ", "*)"}], "\[IndentingNewLine]", 
+   RowBox[{"Grid", "@", 
+    RowBox[{"HPCResult", "[", "\"\<mma_test_004\>\"", "]"}]}]}]}]], "Input",
+ CellChangeTimes->{{3.636220340592579*^9, 3.6362203488749313`*^9}, {
+  3.6362228465317287`*^9, 3.636222847058751*^9}, {3.63622410814347*^9, 
+  3.6362241143773203`*^9}, {3.636224221972574*^9, 3.636224266478283*^9}}]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Close the HPC connection", "Subsection",
+ CellChangeTimes->{{3.6362241780186577`*^9, 3.6362241815618553`*^9}}],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"HPCClose", "[", "conn", "]"}]], "Input",
+ CellChangeTimes->{{3.635766454557261*^9, 3.635766457271287*^9}, {
+  3.636224183309437*^9, 3.6362241842173157`*^9}}],
+
+Cell[BoxData["True"], "Output",
+ CellChangeTimes->{3.6357920676283617`*^9, 3.635792136174704*^9, 
+  3.635792249046741*^9, 3.635792423322014*^9, 3.635792578665864*^9, 
+  3.635792731938438*^9, 3.6357928576363897`*^9, 3.63579301666555*^9, 
+  3.635793068874629*^9, 3.635793225101369*^9}]
+}, Open  ]]
+}, Open  ]]
+},
+WindowSize->{1104, 894},
+WindowMargins->{{79, Automatic}, {Automatic, 182}},
+FrontEndVersion->"10.0 for Mac OS X x86 (32-bit, 64-bit Kernel) (December 4, \
+2014)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[CellGroupData[{
+Cell[580, 22, 116, 1, 44, "Subsection"],
+Cell[699, 25, 166, 3, 28, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[902, 33, 106, 1, 44, "Subsection"],
+Cell[CellGroupData[{
+Cell[1033, 38, 638, 10, 28, "Input"],
+Cell[1674, 50, 1164, 21, 28, "Output"]
+}, Open  ]],
+Cell[2853, 74, 329, 6, 49, "Text"],
+Cell[3185, 82, 874, 17, 201, "Text"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[4096, 104, 100, 1, 44, "Subsection"],
+Cell[CellGroupData[{
+Cell[4221, 109, 125, 1, 35, "Subsubsection"],
+Cell[4349, 112, 1081, 24, 97, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[5467, 141, 127, 1, 35, "Subsubsection"],
+Cell[5597, 144, 353, 6, 49, "Text"],
+Cell[CellGroupData[{
+Cell[5975, 154, 1317, 24, 131, "Input"],
+Cell[7295, 180, 105, 1, 28, "Output"]
+}, Open  ]]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[7461, 188, 117, 1, 44, "Subsection"],
+Cell[CellGroupData[{
+Cell[7603, 193, 127, 1, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[7755, 198, 126, 2, 28, "Input"],
+Cell[7884, 202, 233, 5, 28, "Output"]
+}, Open  ]],
+Cell[8132, 210, 117, 1, 30, "Text"],
+Cell[CellGroupData[{
+Cell[8274, 215, 147, 2, 28, "Input"],
+Cell[8424, 219, 114, 2, 28, "Output"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[8587, 227, 123, 1, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[8735, 232, 204, 3, 28, "Input"],
+Cell[8942, 237, 182, 2, 28, "Output"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[9173, 245, 120, 1, 35, "Subsubsection"],
+Cell[CellGroupData[{
+Cell[9318, 250, 204, 3, 28, "Input"],
+Cell[9525, 255, 231, 4, 28, "Output"]
+}, Open  ]],
+Cell[9771, 262, 308, 6, 30, "Text"]
+}, Open  ]]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[10128, 274, 122, 1, 44, "Subsection"],
+Cell[10253, 277, 1002, 23, 114, "Input"]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[11292, 305, 116, 1, 44, "Subsection"],
+Cell[CellGroupData[{
+Cell[11433, 310, 181, 3, 28, "Input"],
+Cell[11617, 315, 283, 4, 28, "Output"]
+}, Open  ]]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
