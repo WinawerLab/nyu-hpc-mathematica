@@ -86,6 +86,7 @@ function nyuhpc_setup_job {
     ( [ -d "$JOB_RUN_DIR" ] || \mkdir -p "$JOB_RUN_DIR" &>/dev/null ) \
         && ( [ -d "$JOB_FIN_DIR" ] || \mkdir -p "$JOB_FIN_DIR" &>/dev/null ) \
         && \echo "Queued" > "$JOB_STAT_FL" \
+        && \echo "$2" > "$JOB_FIN_DIR/worker_count.txt" \
         && \echo OKAY
 }
 

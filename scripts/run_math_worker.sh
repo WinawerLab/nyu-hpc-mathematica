@@ -22,10 +22,12 @@ MATH_SCRIPT="$HOME/.Mathematica/nyu-hpc-mathematica/scripts/run.m"
 # math_run <init_filename> <worker_id> runs the mathematica kernel for the given init file and the
 # provided worker id.
 function math_run {
-    RUNFILE="$HOME/.nyu_hpc_math_jobs/$1/running-${PBS_ARRAYID}.txt"
-    \date > "$RUNFILE"
+    local RUNFILE="$HOME/.nyu_hpc_math_jobs/$1/running-${PBS_ARRAYID}.txt"
+    local QFILE="$HOME/.nyu_hpc_math_jobs/$1/queued-${PBS_ARRAYID}.txt"
     [ `\cat "$HOME/.nyu_hpc_math_jobs/$1/status.txt"` = "Queued" ] \
         && \echo "Running" > "$HOME/.nyu_hpc_math_jobs/$1/status.txt"
+    \date > "$RUNFILE"
+    \rm -f "$QFILE"
     "$MATH_CMD" -noprompt -script "$MATH_SCRIPT"
     \rm -f "$RUNFILE"
 }
