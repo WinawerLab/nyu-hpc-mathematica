@@ -33,6 +33,9 @@ Mathematica to see its documentation).
   * HPCResult\[connection, name\] yields a list of the result of each worker,
     assuming that job has completed.
 
+For an example of the usage of the toolbox, please see the Mathematica notebook
+usage.nb in the repository's root.
+
 #### Security Note #############################################################
 
 This toolbox is not designed to be secure. While the connection to the server is
