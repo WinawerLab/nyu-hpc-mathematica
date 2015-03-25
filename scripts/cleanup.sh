@@ -35,10 +35,14 @@ RES_DIR="$HOME/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/results"
 [ -d "$DET_DIR" ] || \mkdir -p "$DET_DIR" || die "Could not create details directory"
 
 # First, we want to move all logs to the home directory
-\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME"/worker_log.txt-* "$LOG_DIR/"
+\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME"/worker_log.txt-* "$LOG_DIR/" \
+    || die "Could not move worker logs to the outputs directory!"
 
 # Then, we move the scripts to the details dir
-\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/worker_log.txt-*" "$DET_DIR/"
+\mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/init.m" \
+    "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/run.sh" \
+    "$DET_DIR/" \
+    || die "Could not move scripts to the details directory!"
 
 # Then we move everything else to the results directory
 \mv "$SCRATCH/.nyu_hpc_math_jobs/$FINISHED_JOB_NAME/" "$RES_DIR/" \
