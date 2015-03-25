@@ -42,9 +42,11 @@ JobMessage[msg___] := PutAppend[
   FileNameJoin[{$JobWorkingDirectory, "messages"<>IntegerString[$WorkerID, 10, 4]<>".txt"}]];
 JobSuccess[data_] := Block[
   {result = data},
+Print["Saving..."];
   Save[
     FileNameJoin[{$JobWorkingDirectory, "success-"<>IntegerString[$WorkerID, 10, 4]<>".m"}],
     result];
+Print["Saving Complete."];
   Quit[]];
 JobExport[name_String, data_, args___] := (
   If[!DirectoryQ[FileNameJoin[{$JobWorkingDirectory, "export-"<>IntegerString[$WorkerID, 10, 4]}]],
