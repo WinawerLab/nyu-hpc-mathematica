@@ -13,17 +13,13 @@ Check[
 
 (* import the initialization file *)
 $WorkerInitStatus = Check[
-  ToExpression /@ Reverse[
-    StringSplit[
-      Import[$JobInitFile, "String"],
-      "\n\n"]],
+  Get[$ImportInitFile],
   $Failed];
 If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 Protect[$WorkerInitStatus];
 
 (* Run the job *)
-runWorker = ReleaseHold[NYUHPC`Private`RunWorker];
-status = runWorker[$WorkerID];
+status = NYUHPC`Private`RunWorker[$WorkerID];
 
 (* That is it! *)
 If[status === $Failed,
