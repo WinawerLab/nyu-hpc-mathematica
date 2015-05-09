@@ -506,16 +506,21 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
           NYUHPC`Private`RunWorker]];
       (* scp it to the remote host *)
       With[
-        {res = RunProcess[
+        {res1 = RunProcess[
            {"scp", "-q", "-C", FileNameJoin[{tmpdir, "init.m"}],
             StringJoin[
               HPCUsername[hpc], "@", HPCHost[hpc], 
-              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}]},
-        If[res["ExitCode"] == 0,
+              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}]
+         res2 =  = RunProcess[
+           {"scp", "-q", "-C", FileNameJoin[{tmpdir, "deps.m"}],
+            StringJoin[
+              HPCUsername[hpc], "@", HPCHost[hpc], 
+              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/deps.m"]}]},
+        If[res1["ExitCode"] == 0 && res2["ExitCode"] == 0,
           (DeleteFile[FileNameJoin[{tmpdir, "init.m"}]];
            DeleteDirectory[tmpdir, DeleteContents -> True]),
           Throw[
-            Message[HPCSubmit::ioerr, "Could not scp init.m file"];
+            Message[HPCSubmit::ioerr, "Could not scp init.m or deps.m file"];
             $Failed]]]];
     (* Create the script file *)
     If[
