@@ -510,8 +510,8 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
            {"scp", "-q", "-C", FileNameJoin[{tmpdir, "init.m"}],
             StringJoin[
               HPCUsername[hpc], "@", HPCHost[hpc], 
-              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}]
-         res2 =  = RunProcess[
+              ":/scratch/", HPCUsername[hpc], "/.nyu_hpc_math_jobs/", name, "/init.m"]}],
+         res2 = RunProcess[
            {"scp", "-q", "-C", FileNameJoin[{tmpdir, "deps.m"}],
             StringJoin[
               HPCUsername[hpc], "@", HPCHost[hpc], 
