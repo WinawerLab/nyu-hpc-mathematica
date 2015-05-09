@@ -491,7 +491,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
       Throw[
         Message[HPCSubmit::ioerr, "Could not create job directories"];
         $Failed]];
-    (* Create the init file... *)
+    (* Create the init files... *)
     With[
       {tmpdir = CreateDirectory[]},
       (* save the data... *)
@@ -499,8 +499,11 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
         {NYUHPC`Private`RunWorker = code,
          NYUHPC`Private`$Dependencies = deps},
         Save[
+          FileNameJoin[{tmpdir, "deps.m"}],
+          NYUHPC`Private`$Dependencies];
+        Save[
           FileNameJoin[{tmpdir, "init.m"}],
-          {NYUHPC`Private`RunWorker, NYUHPC`Private`$Dependencies}]];
+          NYUHPC`Private`RunWorker]];
       (* scp it to the remote host *)
       With[
         {res = RunProcess[

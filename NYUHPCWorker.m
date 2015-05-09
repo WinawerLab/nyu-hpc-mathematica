@@ -81,6 +81,9 @@ $JobWorkingDirectory = Check[
   $Failed];
 $JobInitFile = Check[FileNameJoin[{$JobWorkingDirectory, "init.m"}], $Failed];
 
+(* We also load the dependencies list *)
+$DepsInitStatus = Check[FileNameJoin[{$JobWorkingDirectory, "deps.m"}], $Failed];
+
 (* make sure those were found... *)
 If[$JobName === $Failed, JobError["JobName not found"]];
 If[$WorkerID === $Failed, JobError["WorkerID not found"]];
