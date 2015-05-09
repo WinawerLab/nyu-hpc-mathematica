@@ -15,7 +15,7 @@ function die {
 }
 
 # MATH_CMD defines the command used to launch the wolfram kernel
-MATH_CMD="/share/apps/mathematica/10.0.0/Executables/WolframKernel"
+MATH_CMD="/share/apps/mathematica/10.1.0/Executables/WolframKernel"
 MATH_SCRIPT="$HOME/.Mathematica/nyu-hpc-mathematica/scripts/run.m"
 
 # math_run
@@ -36,7 +36,7 @@ function math_run {
 # Initialization and Command Line Arguments
 
 # Make sure we've loaded the mathematica module
-module list 2>&1 | grep -q athematica || module load "mathematica/10.0.0"
+module list 2>&1 | grep -q athematica || module load "mathematica/10.1.0"
 
 # All we get on the command line are the job and the worker id
 JOB="$PBS_JOBNAME"
