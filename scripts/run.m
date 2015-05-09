@@ -6,17 +6,17 @@
 (* Import the NYUHPCWorker namespace... *)
 <<NYUHPCWorker`;
 
-(* See if there are dependencies we need to load... *)
-Check[
-  Map[Get, NYUHPC`Private`$Dependencies],
-  JobError["Message raised while loading dependencies!"]];
-
 (* import the initialization file *)
 $WorkerInitStatus = Check[
   Get[$JobInitFile],
   $Failed];
 If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 Protect[$WorkerInitStatus];
+
+(* See if there are dependencies we need to load... *)
+Check[
+  Map[Get, NYUHPC`Private`$Dependencies],
+  JobError["Message raised while loading dependencies!"]];
 
 (* Run the job *)
 status = NYUHPC`Private`RunWorker[$WorkerID];
