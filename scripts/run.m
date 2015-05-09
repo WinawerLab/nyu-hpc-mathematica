@@ -11,6 +11,11 @@ Check[
   Map[Get, NYUHPC`Private`$Dependencies],
   JobError["Message raised while loading dependencies!"]];
 
+(* import the initialization file *)
+$WorkerInitStatus = Check[Get[$JobInitFile], $Failed];
+If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
+Protect[$WorkerInitStatus];
+
 (* Run the job *)
 status = NYUHPC`Private`RunWorker[$WorkerID];
 

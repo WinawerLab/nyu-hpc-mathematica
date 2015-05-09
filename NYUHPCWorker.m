@@ -27,6 +27,7 @@ $WorkerID::usage = "$WorkerID is the current array ID for the running job.";
 $WorkerInitStatus::usage = "$WorkerInitStatus is the result of loading the worker's init file.";
 $JobName::usage = "$JobName is the name of the currently running job (excluding the -id at the end).";
 $JobWorkingDirectory::usage = "$JobWorkingDirectory contains the scratch directory in which the currently running job should write its results.";
+$JobInitFile::usage = "$JobInitFile contains the filename of the initialization file for the running job.";
 
 Begin["`Private`"];
 
@@ -88,13 +89,9 @@ If[$WorkerID === $Failed, JobError["WorkerID not found"]];
 If[$JobWorkingDirectory === $Failed, JobError["JobWorkingDirectory not found"]];
 If[$JobInitFile === $Failed, JobError["JobInitFile not found"]];
 
-(* import the initialization file *)
-$WorkerInitStatus = Check[Get[$JobInitFile], $Failed];
-If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
-
 (* Protect our definitions... *)
 Protect[JobError, JobMessage, JobSuccess, JobWarning, 
-        $WorkerID, $WorkerInitStatus, $JobInitFile, $JobName, $JobWorkingDirectory];
+        $WorkerID, $JobInitFile, $JobName, $JobWorkingDirectory];
 
 End[];
 EndPackage[];

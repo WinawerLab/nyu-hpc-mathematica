@@ -531,7 +531,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
           "#PBS -j oe\n",
           "#PBS -l walltime=", walltime, "\n",
           "#PBS -t 1-", ToString[n], If[maxSim < n, "%"<>ToString[maxSim], ""], "\n",
-          If[StringQ[rscArg], "#PBS -l " <> rscArg <> "\n", ""],
+          If[StringQ[resources], "#PBS -l " <> resources <> "\n", ""],
           If[priority =!= Automatic, "#PBS -p " <> ToString[priority] <> "\n", ""],
           If[runAt =!= Automatic, "#PBS -a " <> runAt <> "\n", ""],
           "\n",
