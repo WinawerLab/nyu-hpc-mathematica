@@ -12,7 +12,12 @@ Check[
   JobError["Message raised while loading dependencies!"]];
 
 (* import the initialization file *)
-$WorkerInitStatus = Check[Get[$JobInitFile], $Failed];
+$WorkerInitStatus = Check[
+  ToExpression /@ Reverse[
+    StringSplit[
+      Import[$JobInitFile, "String"],
+      "\n\n"]],
+  $Failed];
 If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 Protect[$WorkerInitStatus];
 
