@@ -13,7 +13,7 @@ Check[
 
 (* import the initialization file *)
 $WorkerInitStatus = Check[
-  Get[$ImportInitFile],
+  Get[$JobInitFile],
   $Failed];
 If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 Protect[$WorkerInitStatus];
