@@ -4,7 +4,7 @@
  *)
 
 (* Import the NYUHPCWorker namespace... *)
-<<NYUHPCWorker`
+<<NYUHPCWorker`;
 
 (* See if there are dependencies we need to load... *)
 Check[
@@ -17,7 +17,8 @@ If[$WorkerInitStatus === $Failed, JobError["Could not Get job init file"]];
 Protect[$WorkerInitStatus];
 
 (* Run the job *)
-status = NYUHPC`Private`RunWorker[$WorkerID];
+runWorker = ReleaseHold[NYUHPC`Private`RunWorker];
+status = runWorker[$WorkerID];
 
 (* That is it! *)
 If[status === $Failed,

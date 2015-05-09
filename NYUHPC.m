@@ -496,7 +496,7 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
       {tmpdir = CreateDirectory[]},
       (* save the data... *)
       Block[
-        {NYUHPC`Private`RunWorker = code,
+        {NYUHPC`Private`RunWorker = Hold[code],
          NYUHPC`Private`$Dependencies = deps},
         Save[
           FileNameJoin[{tmpdir, "init.m"}],
