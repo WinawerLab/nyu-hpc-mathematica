@@ -36,7 +36,7 @@ function math_run {
 # Initialization and Command Line Arguments
 
 # Make sure we've loaded the mathematica module
-module list 2>&1 | grep -q athematica || module load "mathematica/10.1.0"
+module list 2>&1 | grep -q athematica || module load "mathematica/10.2.0"
 
 # All we get on the command line are the job and the worker id
 JOB="$PBS_JOBNAME"
