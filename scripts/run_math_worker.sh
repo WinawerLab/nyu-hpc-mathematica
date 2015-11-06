@@ -15,7 +15,7 @@ function die {
 }
 
 # MATH_CMD defines the command used to launch the wolfram kernel
-MATH_CMD="/share/apps/mathematica/10.1.0/Executables/WolframKernel"
+MATH_CMD="/share/apps/mathematica/10.2.0/Executables/WolframKernel"
 MATH_SCRIPT="$HOME/.Mathematica/nyu-hpc-mathematica/scripts/run.m"
 
 # math_run
