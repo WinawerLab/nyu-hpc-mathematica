@@ -171,7 +171,7 @@ HPCConnect[username_String, OptionsPattern[]] := Check[
         With[
           {str = Quiet@Check[ReadString[proc, ToString[tag]], EndOfFile],
            info = ProcessInformation[proc]},
-          If[str === EndOfFile || info["ExitCode"] == 255,
+          If[str === EndOfFile || (IntegerQ@info["ExitCode"] && info["ExitCode"] == 255),
             (* failure to startup; we may need a password... *)
             Throw[
               Message[HPCConnect::noconn, "you may need to setup passwordless login or a tunnel"];
@@ -197,7 +197,7 @@ HPCStatus[hpc:HPCConnection[_, status_, ___]] := With[
     {info = ProcessInformation[proc],
      stat = ProcessStatus[proc]},
     Which[
-      info["ExitCode"] != 0, "ERROR",
+      IntegerQ@info["ExitCode"] && info["ExitCode"] != 0, "ERROR",
       stat == "Running", status,
       stat == "Finished", "DONE",
       True, status]]];
@@ -436,6 +436,7 @@ Protect[HPCWorkerStatus];
 
 (* #HPCSubmit *************************************************************************************)
 Options[HPCSubmit] = {
+  "Cleanup" -> True,
   "RunAt" -> Automatic,
   "Resources" -> Automatic,
   "Priority" -> 0,
@@ -457,7 +458,8 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
      baseDir = OptionValue["Directory"],
      proc = ProcessObject[hpc],
      walltime = OptionValue["Walltime"],
-     deps = OptionValue["Dependencies"] /. None -> {}},
+     deps = OptionValue["Dependencies"] /. None -> {},
+     makeClean = OptionValue["Cleanup"]},
     Check[
       Which[
         HPCStatus[hpc] != "OKAY", Message[HPCStatus::badstatus, HPCStatus[hpc], "HPCSubmit"],
@@ -557,22 +559,25 @@ HPCSubmit[hpc_HPCConnection, name_String, n_, code_, OptionsPattern[]] := Catch[
         (* we need to submit one more job that cleans this job up... first, make a cleanup script *)
         With[
           {cleaner = HPCHomeFile[name, "/cleanup.sh"]},
-          If[
-            "OKAY" != StringTrim @ HPCCommand[
-              hpc,
-              StringJoin[
-                "( \\sed 's/____FINISHED_JOB_ID____/", idstr, "/g'",
-                "    \"$HOME/.Mathematica/nyu-hpc-mathematica/scripts/cleanup.sh\"",
-                "  | \\sed 's/____FINISHED_JOB_NAME____/", name, "/g'",
-                "  > ", cleaner, 
-                "  && \\chmod 755 ", cleaner, " && \\echo OKAY ",
-                ") || \\echo ERROR"]],
+          With[
+            {cleanres = If[makeClean,
+               StringTrim @ HPCCommand[
+                 hpc,
+                 StringJoin[
+                   "( \\sed 's/____FINISHED_JOB_ID____/", idstr, "/g'",
+                   "    \"$HOME/.Mathematica/nyu-hpc-mathematica/scripts/cleanup.sh\"",
+                   "  | \\sed 's/____FINISHED_JOB_NAME____/", name, "/g'",
+                   "  > ", cleaner, 
+                   "  && \\chmod 755 ", cleaner, " && \\echo OKAY ",
+                   ") || \\echo ERROR"]],
+               None]},
+          If[cleanres =!= None && cleanres != "OKAY",
             Message[HPCSubmit::ioerr, "Could create cleanup job"],
             StringTrim @ HPCCommand[
               hpc,
               StringJoin[
                 "( /share/apps/admins/torque/qsub.sh ", cleaner, " &>/dev/null && \\echo OKAY )",
-                " || \\echo ERROR"]]]]]]]];
+                " || \\echo ERROR"]]]]]]]]];
 Protect[HPCSubmit];
 
 (* #HPCResult *************************************************************************************)
