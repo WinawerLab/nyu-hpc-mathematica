@@ -37,6 +37,8 @@ function math_run {
 
 # Make sure we've loaded the mathematica module
 module list 2>&1 | grep -q athematica || module load "mathematica/10.2.0"
+# And the FreeSurfer module
+module list 2>&1 | grep -q reesurfer || module load "freesurfer/5.3.0"
 
 # All we get on the command line are the job and the worker id
 JOB="$PBS_JOBNAME"
